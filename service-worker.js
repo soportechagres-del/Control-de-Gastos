@@ -1,11 +1,11 @@
-const CACHE_NAME = 'control-gastos-v4';
+const CACHE_NAME = 'control-gastos-v6';
 const APP_SHELL = [
     './',
     './index.html',
     './app.js',
     './manifest.webmanifest',
-    './assets/icon-192.png',
-    './assets/icon-512.png'
+    './icon-192.png',
+    './icon-512.png'
 ];
 
 self.addEventListener('install', event => {

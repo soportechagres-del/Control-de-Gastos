@@ -15,7 +15,7 @@ function cents(value) { return Math.round(Number(value) * 100); }
 function sumAmounts(items) { return items.reduce((sum, item) => sum + cents(item.amount), 0); }
 function money(value) { return `$${(value / 100).toFixed(2)}`; }
 function incomeFrequency(record) { return record.incomeFrequency || 'monthly'; }
-function monthlyIncome(record) { return cents(record.income) * (incomeFrequency(record) === 'fortnightly' ? 2 : 1); }
+function recordedIncome(record) { return cents(record.income); }
 function newId() { return Date.now() * 1000 + (idSequence++ % 1000); }
 function escapeHTML(value) {
     return String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
@@ -63,7 +63,7 @@ function validateLedger(value) {
     Object.entries(value.months).forEach(([month, record]) => {
         if (!validMonth(month) || !record || !validAmount(record.income) ||
             (record.incomeFrequency !== undefined && !['monthly', 'fortnightly'].includes(record.incomeFrequency)) ||
-            !Number.isSafeInteger(monthlyIncome(record)) || !Array.isArray(record.categories) ||
+            !Number.isSafeInteger(recordedIncome(record)) || !Array.isArray(record.categories) ||
             !record.categories.every(cat => validCategory(cat) && ['expense', 'savings'].includes(cat.type) && cat.items.every(validItem))) {
             throw new Error('Hay un registro mensual no válido.');
         }
@@ -201,7 +201,7 @@ function totals(month = selectedMonth) {
     const savings = categories.filter(cat => cat.type === 'savings').reduce((sum, cat) => sum + categoryTotal(cat, month), 0);
     const expenses = categories.filter(cat => cat.type !== 'savings').reduce((sum, cat) => sum + categoryTotal(cat, month), 0);
     const debtPayments = categories.filter(cat => cat.type === 'loan').reduce((sum, cat) => sum + categoryTotal(cat, month), 0);
-    const income = monthlyIncome(record);
+    const income = recordedIncome(record);
     return { income, expenses, savings, debtPayments, balance: income - expenses - savings,
         recorded: Boolean(record.recorded || debtPayments > 0), example: Boolean(record.example) };
 }
@@ -222,7 +222,7 @@ function renderApp() {
     document.getElementById('incomeFrequency').value = incomeFrequency(record);
     document.getElementById('incomeLabel').textContent = incomeFrequency(record) === 'fortnightly' ? 'Ingreso por quincena:' : 'Ingreso mensual:';
     document.getElementById('incomeHint').textContent = incomeFrequency(record) === 'fortnightly'
-        ? `${money(cents(record.income))} × 2 = ${money(summary.income)} al mes` : '';
+        ? 'Se usa el monto indicado, sin multiplicarlo.' : '';
     document.getElementById('monthStatus').textContent = record.example ? 'Datos de ejemplo' : summary.recorded ? 'Mes con registros' : 'Sin registros';
     const categories = visibleCategories();
     document.getElementById('categoriesContainer').innerHTML = categories.map((cat, index) => {
@@ -263,7 +263,7 @@ function renderApp() {
         </div>`;
     }).join('') || '<p class="text-sm text-slate-500">Este mes está vacío. Agrega categorías para registrar tus gastos.</p>';
     const row = (label, amount, className = '') => `<tr class="${className}"><td class="py-2.5 px-4">${escapeHTML(label)}</td><td class="py-2.5 px-4 text-right font-semibold">${money(amount)}</td></tr>`;
-    document.getElementById('summaryTableBody').innerHTML = row('SUELDO MENSUAL', summary.income, 'bg-blue-50') +
+    document.getElementById('summaryTableBody').innerHTML = row(incomeFrequency(record) === 'fortnightly' ? 'INGRESO QUINCENAL' : 'INGRESO MENSUAL', summary.income, 'bg-blue-50') +
         categories.map(cat => row(`${cat.name}${cat.type === 'loan' ? ' (abonos del mes)' : ''}`, categoryTotal(cat))).join('') +
         row('TOTAL GASTOS (incluye abonos, excluye ahorro)', summary.expenses, 'bg-slate-100') +
         row('AHORRO REGISTRADO', summary.savings) +
